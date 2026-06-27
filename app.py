@@ -18,7 +18,7 @@ def get_claude_response(user_message):
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-haiku-20240307",
+                "model": "claude-haiku-4-5",
                 "max_tokens": 500,
                 "system": "তুমি Dhaka Exclusive-এর কাস্টমার সার্ভিস AI। বাংলায় সংক্ষিপ্ত ও বিনয়ী উত্তর দাও।",
                 "messages": [{"role": "user", "content": user_message}]
