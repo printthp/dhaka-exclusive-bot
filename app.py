@@ -724,7 +724,29 @@ def analyze_image_with_gemini(image_bytes, mime_type, catalogue_data, history):
         return BN_CHHOBI_PROBLEM
 
 # ========== Keep Alive ==========
+def has_synced_before():
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM knowledge_base WHERE source = 'sync' LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row is not None
+    except:
+        return False
+
 def keep_alive():
+    time.sleep(30)
+    if not has_synced_before():
+        print("First startup: auto-syncing Facebook history...")
+        sync_facebook_history_task(100)
+    else:
+        print("Facebook history already synced, skipping initial sync.")
+
+    last_daily_sync = time.time()
+    DAILY = 86400
+
     while True:
         time.sleep(600)
         try:
@@ -732,6 +754,11 @@ def keep_alive():
             print("Keep alive ping sent")
         except:
             pass
+
+        if time.time() - last_daily_sync >= DAILY:
+            print("Daily sync: fetching latest conversations...")
+            threading.Thread(target=sync_facebook_history_task, args=(30,), daemon=True).start()
+            last_daily_sync = time.time()
 
 # ========== Facebook Graph Helpers ==========
 def fetch_facebook_conversations(limit=50):
