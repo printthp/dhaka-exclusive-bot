@@ -4,7 +4,6 @@ import threading
 import time
 import base64
 import json
-from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -36,6 +35,15 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge_base (
+                id SERIAL PRIMARY KEY,
+                category TEXT,
+                content TEXT,
+                source TEXT DEFAULT 'auto',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
         conn.commit()
         cur.close()
         conn.close()
@@ -60,8 +68,8 @@ def get_history(sender_id):
 
 def save_history(sender_id, history):
     try:
-        if len(history) > 50:
-            history = history[-50:]
+        if len(history) > 60:
+            history = history[-60:]
         conn = get_db_conn()
         cur = conn.cursor()
         cur.execute("""
@@ -75,6 +83,77 @@ def save_history(sender_id, history):
         conn.close()
     except Exception as e:
         print(f"Save history error: {e}")
+
+def get_knowledge():
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT category, content FROM knowledge_base ORDER BY created_at DESC LIMIT 40")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if rows:
+            return "\n".join([f"[{r[0]}] {r[1]}" for r in rows])
+        return ""
+    except Exception as e:
+        print(f"Knowledge error: {e}")
+        return ""
+
+def save_knowledge(category, content, source="auto"):
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO knowledge_base (category, content, source) VALUES (%s, %s, %s)",
+            (category, content, source)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Save knowledge error: {e}")
+
+def extract_knowledge_from_conversation(history):
+    """Completed conversation থেকে জ্ঞান extract করে knowledge base এ save করে"""
+    try:
+        if len(history) < 6:
+            return
+        conv_text = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-haiku-4-5",
+                "max_tokens": 500,
+                "system": """তুমি একটি e-commerce conversation বিশ্লেষক।
+এই কথোপকথন থেকে দরকারী তথ্য বের করো।
+JSON array format এ দাও, যেমন:
+[{"category": "জনপ্রিয় পণ্য", "content": "কাস্টমাররা X পণ্য বেশি জিজ্ঞেস করে"},
+ {"category": "সাধারণ প্রশ্ন", "content": "ডেলিভারি টাইম নিয়ে প্রশ্ন আসে"},
+ {"category": "আপত্তি", "content": "দাম বেশি মনে হয় কাস্টমারদের"}]
+
+category গুলো হতে পারে: জনপ্রিয় পণ্য, সাধারণ প্রশ্ন, আপত্তি, সফল কৌশল, অভিযোগ
+গুরুত্বপূর্ণ না হলে [] দাও।""",
+                "messages": [{"role": "user", "content": conv_text}]
+            }
+        )
+        data = response.json()
+        if "content" in data:
+            text = data["content"][0]["text"].strip()
+            try:
+                items = json.loads(text)
+                for item in items:
+                    if "category" in item and "content" in item:
+                        save_knowledge(item["category"], item["content"])
+                print(f"Knowledge extracted: {len(items)} items")
+            except:
+                pass
+    except Exception as e:
+        print(f"Extract knowledge error: {e}")
 
 # ========== GitHub Auto-Update ==========
 def github_update_file(filename, new_content, commit_message="Bot auto-update"):
@@ -104,7 +183,7 @@ def github_update_file(filename, new_content, commit_message="Bot auto-update"):
 # ========== Helpers ==========
 def is_meaningful_message(text):
     text = text.strip()
-    if len(text) <= 2:
+    if len(text) <= 1:
         return False
     if text in IGNORE_PATTERNS:
         return False
@@ -212,9 +291,9 @@ def analyze_image(image_url, catalogue_data, history):
 {context}
 নিয়ম:
 - ছবি দেখে প্রোডাক্ট চিনে catalogue থেকে দাম বলো
-- plain text এ লেখো, bold বা * বা ** একদম ব্যবহার করো না
+- plain text এ লেখো, bold বা * বা ** ব্যবহার করো না
 - ২-৩ লাইনে স্বাভাবিক বাংলায় বলো
-- থাকলে দাম বলো এবং order করতে উৎসাহিত করো""",
+- দাম বলো এবং অর্ডার করতে উৎসাহিত করো""",
                 "messages": [{
                     "role": "user",
                     "content": [
@@ -237,38 +316,39 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
         history = get_history(sender_id)
         history.append({"role": "user", "content": user_message})
 
-        system = f"""তুমি Dhaka Exclusive-এর অভিজ্ঞ sales agent রিয়া।
+        knowledge = get_knowledge()
+
+        system = f"""তুমি Dhaka Exclusive-এর sales agent রিয়া। কাস্টমারের সাথে বাংলায় কথা বলো।
 
 সবচেয়ে গুরুত্বপূর্ণ নিয়ম:
-- plain text এ লেখো
-- bold, *, **, markdown একদম ব্যবহার করো না
-- ছোট ছোট বাক্য
-- জি আপু বা জি ভাই দিয়ে শুরু করো
-- আগের সব কথা মনে রেখে কথা বলো
-- emoji খুব কম
+- কাস্টমার যা জিজ্ঞেস করে, সরাসরি সেই উত্তর দাও
+- plain text এ লেখো, কোনো *, **, # markdown নয়
+- ছোট ছোট বাক্য, সহজ ও স্বাভাবিক ভাষা
+- আগের কথা মনে রেখে উত্তর দাও
+- emoji খুব কম ব্যবহার করো
 
-ডেলিভারি চার্জ:
-- ঢাকার ভেতরে: ৮০ টাকা
-- ঢাকার বাইরে: ১৩০ টাকা
+সালাম বা হ্যালো পেলে:
+উষ্ণভাবে স্বাগত জানাও। বলো আমরা কী কী পণ্য বিক্রি করি। জিজ্ঞেস করো কী সাহায্য লাগবে।
 
-ডিসকাউন্ট নীতি:
-কাস্টমার দাম কমাতে চাইলে সহজে দিও না। ধাপে ধাপে:
-১ম বার: এই দামটাই আমাদের সেরা দাম, কোয়ালিটি দেখলে বুঝবেন।
-২য় বার: এটা original product, দামটা fixed।
+দাম জিজ্ঞেস করলে:
+প্রথমেই দাম বলো। তারপর পণ্যের বিশেষত্ব ও অর্ডার করার অনুরোধ করো।
+
+স্টক বা পণ্য আছে কিনা জিজ্ঞেস করলে:
+catalogue দেখে সরাসরি বলো আছে বা নেই।
+
+দামাদামি করলে:
+১ম বার: এটাই আমাদের সেরা দাম, কোয়ালিটি দেখলে বুঝবেন।
+২য় বার: original product, দাম fixed।
 ৩য় বার: ২টা নিলে একটু দেখা যায়।
-শেষে: ঠিক আছে, আপনার জন্য ২০-৩০ টাকা কমিয়ে দিচ্ছি।
+শেষমেশ: আপনার জন্য ২০-৩০ টাকা কমিয়ে দিচ্ছি।
 
-রাগী কাস্টমার:
-তর্ক করো না। বলো: আমি সত্যিই দুঃখিত। কী সমস্যা হয়েছে বলুন, সমাধান করবো।
+অর্ডার নিতে চাইলে একটা একটা করে জিজ্ঞেস করো:
+পদক্ষেপ ১: "আপনার নাম কী?"
+পদক্ষেপ ২: "আপনার ফোন নম্বর?"
+পদক্ষেপ ৩: "সম্পূর্ণ ঠিকানা?"
+পদক্ষেপ ৪: "ঢাকার ভেতরে নাকি বাইরে?"
 
-অর্ডার নেওয়া:
-কাস্টমার অর্ডার করতে চাইলে একে একে নাও:
-১. নাম
-২. ফোন নম্বর
-৩. সম্পূর্ণ ঠিকানা
-৪. ঢাকার ভেতরে নাকি বাইরে
-
-সব তথ্য পেলে plain text এ summary দাও:
+সব তথ্য পেলে summary দাও:
 অর্ডার নিশ্চিত!
 প্রোডাক্ট: [নাম]
 দাম: [দাম]
@@ -279,13 +359,19 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
 ঠিকানা: [ঠিকানা]
 ধন্যবাদ আপনার অর্ডারের জন্য!
 
-আমাদের প্রোডাক্ট:
-{catalogue_data if catalogue_data else "লোড হয়নি"}
+ডেলিভারি চার্জ: ঢাকার ভেতরে ৮০ টাকা, বাইরে ১৩০ টাকা
+
+রাগী কাস্টমার হলে: "সত্যিই দুঃখিত। কী সমস্যা হয়েছে বলুন, সমাধান করবো।"
+
+আমাদের পণ্য তালিকা:
+{catalogue_data if catalogue_data else "এই মুহূর্তে লোড হয়নি"}
+
+{f"কাস্টমারদের কাছ থেকে শেখা তথ্য:{chr(10)}{knowledge}" if knowledge else ""}
 
 ওয়েবসাইট: dhakaexclusive.org"""
 
         if is_comment:
-            system += "\n\nএটা পোস্টের কমেন্ট। ১ লাইনে বলো এবং inbox এ message করতে বলো।"
+            system += "\n\nএটা Facebook পোস্টের কমেন্ট। সংক্ষেপে ১ লাইনে রিপ্লাই দাও এবং inbox এ message করতে বলো।"
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -295,8 +381,8 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
                 "content-type": "application/json"
             },
             json={
-                "model": "claude-haiku-4-5",
-                "max_tokens": 400,
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 500,
                 "system": system,
                 "messages": history
             }
@@ -306,6 +392,15 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
             reply = data["content"][0]["text"]
             history.append({"role": "assistant", "content": reply})
             save_history(sender_id, history)
+
+            # অর্ডার confirm হলে conversation থেকে শিখো
+            if "অর্ডার নিশ্চিত" in reply:
+                threading.Thread(
+                    target=extract_knowledge_from_conversation,
+                    args=(history,),
+                    daemon=True
+                ).start()
+
             return reply
         return "একটু সমস্যা হচ্ছে, একটু পরে আবার বলুন।"
     except Exception as e:
@@ -361,7 +456,7 @@ def webhook():
                                     save_history(sender_id, history)
                                     send_message(sender_id, reply)
                                 elif attachment["type"] == "audio":
-                                    send_message(sender_id, "ভয়েস মেসেজ শুনতে পাচ্ছি না, টেক্সটে লিখুন 😊")
+                                    send_message(sender_id, "ভয়েস মেসেজ শুনতে পাচ্ছি না, টেক্সটে লিখুন।")
 
                 for change in entry.get("changes", []):
                     if change.get("field") == "feed":
@@ -376,6 +471,54 @@ def webhook():
     except Exception as e:
         print(f"Webhook error: {e}")
     return "OK", 200
+
+@app.route("/learn-history", methods=["POST"])
+def learn_history():
+    """পুরনো কাস্টমার কথোপকথন ফিড করে জ্ঞান অর্জন করাও।
+    Body: {"conversations": [{"messages": [{"role": "user/assistant", "content": "..."}]}]}
+    """
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    conversations = data.get("conversations", [])
+    if not conversations:
+        return jsonify({"error": "No conversations provided"}), 400
+
+    learned = 0
+    for conv in conversations:
+        messages = conv.get("messages", [])
+        if messages:
+            extract_knowledge_from_conversation(messages)
+            learned += 1
+        time.sleep(0.5)
+
+    return jsonify({"status": "success", "learned_from": learned}), 200
+
+@app.route("/add-knowledge", methods=["POST"])
+def add_knowledge():
+    """সরাসরি knowledge base এ তথ্য যোগ করো।
+    Body: {"category": "...", "content": "..."}
+    """
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    category = data.get("category", "")
+    content = data.get("content", "")
+    if not category or not content:
+        return jsonify({"error": "category and content required"}), 400
+    save_knowledge(category, content, source="manual")
+    return jsonify({"status": "saved"}), 200
+
+@app.route("/knowledge", methods=["GET"])
+def view_knowledge():
+    """Knowledge base দেখো"""
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    knowledge = get_knowledge()
+    return jsonify({"knowledge": knowledge}), 200
 
 @app.route("/update-bot", methods=["POST"])
 def update_bot():
