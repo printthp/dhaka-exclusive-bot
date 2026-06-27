@@ -472,6 +472,114 @@ def webhook():
         print(f"Webhook error: {e}")
     return "OK", 200
 
+def fetch_facebook_conversations(limit=50):
+    """Facebook Page থেকে পুরনো conversations fetch করে"""
+    try:
+        url = "https://graph.facebook.com/v18.0/me/conversations"
+        params = {
+            "access_token": PAGE_ACCESS_TOKEN,
+            "fields": "id,participants",
+            "limit": limit
+        }
+        resp = requests.get(url, params=params)
+        data = resp.json()
+        if "error" in data:
+            print(f"Facebook conversations error: {data['error']}")
+            return []
+        return data.get("data", [])
+    except Exception as e:
+        print(f"Fetch conversations error: {e}")
+        return []
+
+def fetch_conversation_messages(conversation_id, limit=30):
+    """একটি conversation-এর সব message fetch করে"""
+    try:
+        url = f"https://graph.facebook.com/v18.0/{conversation_id}/messages"
+        params = {
+            "access_token": PAGE_ACCESS_TOKEN,
+            "fields": "message,from,created_time",
+            "limit": limit
+        }
+        resp = requests.get(url, params=params)
+        data = resp.json()
+        if "error" in data:
+            return []
+        return data.get("data", [])
+    except Exception as e:
+        print(f"Fetch messages error: {e}")
+        return []
+
+def get_page_id():
+    """Page ID বের করো"""
+    try:
+        resp = requests.get(
+            "https://graph.facebook.com/v18.0/me",
+            params={"access_token": PAGE_ACCESS_TOKEN, "fields": "id"}
+        )
+        return resp.json().get("id", "")
+    except:
+        return ""
+
+def sync_facebook_history_task(num_conversations):
+    """Background task: Facebook থেকে পুরনো conversations এনে শেখো"""
+    try:
+        print(f"Starting Facebook history sync: {num_conversations} conversations...")
+        page_id = get_page_id()
+        conversations = fetch_facebook_conversations(limit=num_conversations)
+        print(f"Found {len(conversations)} conversations")
+
+        learned = 0
+        for conv in conversations:
+            conv_id = conv.get("id", "")
+            if not conv_id:
+                continue
+
+            raw_messages = fetch_conversation_messages(conv_id, limit=40)
+            if not raw_messages:
+                continue
+
+            # Facebook message format কে Claude history format এ convert করো
+            history = []
+            for msg in reversed(raw_messages):
+                sender_id = msg.get("from", {}).get("id", "")
+                text = msg.get("message", "").strip()
+                if not text:
+                    continue
+                role = "assistant" if sender_id == page_id else "user"
+                history.append({"role": role, "content": text})
+
+            if len(history) >= 4:
+                extract_knowledge_from_conversation(history)
+                learned += 1
+                time.sleep(1)
+
+        print(f"Facebook history sync done. Learned from {learned} conversations.")
+        save_knowledge("সিস্টেম", f"Facebook history sync সম্পন্ন। {learned}টি conversation থেকে শেখা হয়েছে।", source="sync")
+    except Exception as e:
+        print(f"Sync task error: {e}")
+
+@app.route("/sync-facebook", methods=["POST"])
+def sync_facebook():
+    """Facebook Page-এর পুরনো conversations fetch করে knowledge base এ যোগ করো।
+    Body: {"limit": 50}  (কতটা conversation আনবে)
+    """
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json or {}
+    limit = min(int(data.get("limit", 50)), 200)
+
+    threading.Thread(
+        target=sync_facebook_history_task,
+        args=(limit,),
+        daemon=True
+    ).start()
+
+    return jsonify({
+        "status": "started",
+        "message": f"Background এ {limit}টি conversation sync শুরু হয়েছে। /knowledge দিয়ে দেখুন।"
+    }), 200
+
 @app.route("/learn-history", methods=["POST"])
 def learn_history():
     """পুরনো কাস্টমার কথোপকথন ফিড করে জ্ঞান অর্জন করাও।
