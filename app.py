@@ -32,19 +32,19 @@ GEMINI_FALLBACK_MODELS = [
 def _b(hex_str):
     return bytes.fromhex(hex_str.replace(" ", "")).decode("utf-8")
 
-BN_ORDER_CONFIRM = _b("e0a685e0a6b0e0a78de0a6b0 e0a6a8e0a6bfe0a6b6e0a78de0a699e0a6bfe0a6a4")
-BN_EKTU_PROBLEM  = _b("e0a685e0a695e0a69f e0a6b8e0a6aee0a6b8e0a78de0a6af e0a6b9e0a699e0a78de0a699e0a6c7 e0a685e0a695e0a69f e0a6aae0a6b0e0a6c7 e0a686e0a686e0a6ace0a6b0 e0a6aee0a6b2e0a6c1e0a6a8e0a78d e0a5a4")
-BN_CHHOBI_PROBLEM = _b("e0a69be0a6aee0a6bfe0a69f e0a686e0a6c7e0a699e0a699e0a6a4e0a6c7 e0a6aae0a6bee0a699e0a78de0a69b e0a6a8e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6b2e0a6bfe0a699e0a6c1e0a6a8e0a78d e0a5a4")
-BN_BHOYESH       = _b("e0a6ade0a6afe0a6c7e0a6b8 e0a6aee0a6c7e0a6b8e0a6c7e0a699 e0a6b6e0a6c1e0a6a8e0a6a4e0a6c7 e0a6aae0a6bbe0a699e0a78de0a69b e0a6a8e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6b2e0a6bfe0a699e0a6c1e0a6a8e0a78d e0a5a4")
-BN_VIDEO         = _b("e0a6ade0a6bfe0a687e0a6bfe0a687 e0a686e0a6c7e0a699e0a6bbe e0a6afe0a6bbee0a699e0a78de0a69b e0a6c7 e0a6a8e0a6be e0a69be0a6aee0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae0a6bee0a69fa0a6bee0a6a8e0a78d e0a5a4")
-BN_FILE          = _b("e0a6abe0a6bee0a687e0a6b2 e0a6b8e0a6bbee0a6aae0a6bee0a6b0e0a69f e0a695e0a6b0e0a6bf e0a6a8e0a6be e0a69be0a6aae0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae0a6bee0a69fa0a6bee0a6a8e0a78d e0a5a4")
-BN_STICKER       = _b("e0a69fe0a6bfe0a695 e0a686e0a69be0a6c7")
-BN_IMG_FAIL_M    = _b("e0a69be0a6aee0a6bfe0a69f e0a6aae0a7cd e0a6b0e0a6b8e0a6c7e0a6b8 e0a695e0a6b0e0a6be e0a6afe e0a6aee0a78de0a69b e0a6c7 e0a6a8e0a6be e0a686e0a6ace0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
-BN_IMG_RETRY_M   = _b("e0a69be0a6aee0a6bfe0a69fa0a6a4e0a6be e0a686e0a6b8 e0a6c7e0a6a8e0a6bf e0a686e0a6abe0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
-BN_IMG_RETRY_W   = _b("e0a69be0a6aee0a6bfe0a69fa0a6a4e0a6be e0a686e0a6b8 e0a6c7e0a6a8e0a6bf e0a686e0a6abe0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
-BN_WH_DOC        = _b("e0a687e0a695e0a6c1e0a6aee0a6c7e0a6a8e0a69f e0a6b8e0a6bbee0a6aae e0a6bee0a6b0e0a69f e0a695e0a6b0e0a6bf e0a6a8e0a6be e0a69be0a6aae e0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae e0a69fa0a6a8e0a78d e0a5a4")
-BN_WEBSITE       = _b("e0a695e0a6b9e0a6bee0a695e0a6bee0a6b0e0a6bee0a6b0e0a695e0a6bee0a7e0a6b0e0a6bee0a695e0a6bee0a695e0a6bee0a6b8e0a6bee0a6a4e0a6bee0a6a8")
-BN_PRIVACY       = _b("e0a686e0a6aee0a6b0e0a6be e0a686e0a6aae0a6a8 e0a6afe0a6a6e0a6bf e0a695e0a6a4e0a6aee0a6bee0a695 e0a6a8e0a6bf e0a6a4e0a6c7 e0a6b8e0a6aee0a6aae e0a695e0a6b0e0a7e0a6bf e0a6a8e0a6be e0a6afe e0a695e0a6aee0a6b2 e0a686e0a695 e0a695e0a6a4e0a6aee0a6bee0a695 e0a6b8e0a6aae0a6bee0a6a8e0a6a4 e0a6b0e0a6bee0a695e0a6b6")
+BN_ORDER_CONFIRM = _b("e0a685e0a6b0e0a78de0a6a1e0a6bee0a6b020e0a6a8e0a6bfe0a6b6e0a78de0a69ae0a6bfe0a6a4")
+BN_EKTU_PROBLEM  = _b("e0a68fe0a695e0a69fe0a78120e0a6b8e0a6aee0a6b8e0a78de0a6afe0a6be20e0a6b9e0a69ae0a78de0a69be0a7872c20e0a68fe0a695e0a69fe0a78120e0a6aae0a6b0e0a78720e0a686e0a6ace0a6bee0a6b020e0a6ace0a6b2e0a781e0a6a8e0a5a4")
+BN_CHHOBI_PROBLEM = _b("e0a69be0a6ace0a6bfe0a69fe0a6be20e0a6a6e0a787e0a696e0a6a4e0a78720e0a6aae0a6bee0a69ae0a78de0a69be0a6bf20e0a6a8e0a6be2c20e0a69fe0a787e0a695e0a78de0a6b8e0a69fe0a78720e0a6b2e0a6bfe0a696e0a781e0a6a8e0a5a4")
+BN_BHOYESH       = _b("e0a6ade0a6afe0a6bce0a787e0a6b820e0a6aee0a787e0a6b8e0a787e0a69c20e0a6b6e0a781e0a6a8e0a6a4e0a78720e0a6aae0a6bee0a69ae0a78de0a69be0a6bf20e0a6a8e0a6be2c20e0a69fe0a787e0a695e0a78de0a6b8e0a69fe0a78720e0a6b2e0a6bfe0a696e0a781e0a6a8e0a5a4")
+BN_VIDEO         = _b("e0a6ade0a6bfe0a6a1e0a6bfe0a69320e0a6a6e0a787e0a696e0a6be20e0a6afe0a6bee0a69ae0a78de0a69be0a78720e0a6a8e0a6be2c20e0a69be0a6ace0a6bf20e0a6ace0a6be20e0a69fe0a787e0a695e0a78de0a6b8e0a69f20e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_FILE          = _b("e0a6abe0a6bee0a687e0a6b220e0a6b8e0a6bee0a6aae0a78be0a6b0e0a78de0a69f20e0a695e0a6b0e0a6bf20e0a6a8e0a6be2c20e0a69be0a6ace0a6bf20e0a6ace0a6be20e0a69fe0a787e0a695e0a78de0a6b8e0a69f20e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_STICKER       = _b("e0a6a0e0a6bfe0a69520e0a686e0a69be0a787")
+BN_IMG_FAIL_M    = _b("e0a69be0a6ace0a6bf20e0a6aae0a78de0a6b0e0a6b8e0a787e0a6b820e0a695e0a6b0e0a6be20e0a6afe0a6bee0a69ae0a78de0a69be0a78720e0a6a8e0a6be2c20e0a686e0a6ace0a6bee0a6b020e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_IMG_RETRY_M   = _b("e0a69be0a6ace0a6bfe0a69fe0a6be20e0a686e0a6b8e0a787e0a6a8e0a6bf2c20e0a686e0a6ace0a6bee0a6b020e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_IMG_RETRY_W   = _b("e0a69be0a6ace0a6bfe0a69fe0a6be20e0a686e0a6b8e0a787e0a6a8e0a6bf2c20e0a686e0a6ace0a6bee0a6b020e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_WH_DOC        = _b("e0a6a1e0a695e0a781e0a6aee0a787e0a6a8e0a78de0a69f20e0a6b8e0a6bee0a6aae0a78be0a6b0e0a78de0a69f20e0a695e0a6b0e0a6bf20e0a6a8e0a6be2c20e0a69be0a6ace0a6bf20e0a6ace0a6be20e0a69fe0a787e0a695e0a78de0a6b8e0a69f20e0a6aae0a6bee0a6a0e0a6bee0a6a8e0a5a4")
+BN_WEBSITE       = _b("6468616b616578636c75736976652e6f7267")
+BN_PRIVACY       = _b("e0a686e0a6aee0a6b0e0a6be20e0a686e0a6aae0a6a8e0a6bee0a6b020e0a6ace0a78de0a6afe0a695e0a78de0a6a4e0a6bfe0a697e0a6a420e0a6a4e0a6a5e0a78de0a6af20e0a6b8e0a682e0a697e0a78de0a6b0e0a6b920e0a695e0a6b0e0a6bf20e0a6a8e0a6bee0a5a4")
 
 IGNORE_PATTERNS = [
     "🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"
