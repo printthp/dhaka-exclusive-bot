@@ -13,8 +13,21 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 CATALOGUE_ID = "4177718442481756"
 RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-126eb.up.railway.app")
 
-# কাস্টমারের conversation history রাখবো
+# কাস্টমারের conversation history
 conversation_history = {}
+
+# শুধু emoji বা অর্থহীন মেসেজ filter করো
+IGNORE_PATTERNS = ["🔥", "👏", "❤️", "😍", "👍", "🙏", "😊", "💯", "✅", "🎉"]
+
+def is_meaningful_message(text):
+    text = text.strip()
+    if len(text) <= 2:
+        return False
+    if text in IGNORE_PATTERNS:
+        return False
+    if all(char in '🔥👏❤️😍👍🙏😊💯✅🎉😂🥰💕🌹' for char in text):
+        return False
+    return True
 
 def get_catalogue_products():
     try:
@@ -39,7 +52,7 @@ def get_catalogue_products():
         print(f"Catalogue error: {e}")
         return ""
 
-def analyze_image(image_url, catalogue_data):
+def analyze_image(image_url, catalogue_data, conversation_context=""):
     try:
         img_response = requests.get(image_url, timeout=10)
         if img_response.status_code != 200:
@@ -59,19 +72,21 @@ def analyze_image(image_url, catalogue_data):
                 "model": "claude-haiku-4-5",
                 "max_tokens": 200,
                 "system": f"""তুমি Dhaka Exclusive-এর কাস্টমার সার্ভিস রিয়া।
-কাস্টমার একটা ছবি পাঠিয়েছে।
 
-আমাদের প্রোডাক্ট লিস্ট:
+আমাদের প্রোডাক্ট:
 {catalogue_data}
 
-ছবি দেখে প্রোডাক্ট চেনো এবং আমাদের catalogue থেকে মিলিয়ে দাম বলো।
-যদি না থাকে: "এই প্রোডাক্টটা এখন আমাদের কাছে নেই, তবে আমাদের ওয়েবসাইটে দেখুন: dhakaexclusive.org"
-স্বাভাবিক বাংলায় ২-৩ লাইনে বলো।""",
+আগের কথোপকথন:
+{conversation_context}
+
+ছবি দেখে প্রোডাক্ট চেনো, catalogue থেকে মিলিয়ে দাম বলো।
+২-৩ লাইনে স্বাভাবিক বাংলায় বলো।
+না থাকলে: "এই প্রোডাক্টটা এখন নেই, dhakaexclusive.org এ দেখুন" """,
                 "messages": [{
                     "role": "user",
                     "content": [
                         {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": image_data}},
-                        {"type": "text", "text": "এই প্রোডাক্টের দাম কত?"}
+                        {"type": "text", "text": "এই প্রোডাক্টটা কী? দাম কত?"}
                     ]
                 }]
             }
@@ -79,44 +94,43 @@ def analyze_image(image_url, catalogue_data):
         data = response.json()
         if "content" in data:
             return data["content"][0]["text"]
-        return "ছবিটা দেখতে পাচ্ছি না, একটু বড় করে পাঠান।"
+        return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখুন।"
     except Exception as e:
         print(f"Image error: {e}")
-        return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখে জানান কী দরকার।"
+        return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখুন।"
 
 def get_claude_response(sender_id, user_message, catalogue_data, is_comment=False):
     try:
-        # Conversation history রাখো
         if sender_id not in conversation_history:
             conversation_history[sender_id] = []
-        
+
         conversation_history[sender_id].append({
             "role": "user",
             "content": user_message
         })
-        
-        # শুধু শেষ ১০টা message রাখো
+
+        # শেষ ১০টা message রাখো
         if len(conversation_history[sender_id]) > 10:
             conversation_history[sender_id] = conversation_history[sender_id][-10:]
 
-        system = f"""তুমি Dhaka Exclusive-এর কাস্টমার সার্ভিস প্রতিনিধি রিয়া।
+        system = f"""তুমি Dhaka Exclusive-এর কাস্টমার সার্ভিস রিয়া।
 
-তোমার ব্যক্তিত্ব:
-- মিষ্টি, বন্ধুত্বপূর্ণ, ধৈর্যশীল
-- একদম মানুষের মতো কথা বলো
-- কাস্টমার যা জিজ্ঞেস করে ঠিক সেটার উত্তর দাও
-- অতিরিক্ত তথ্য দিও না
-- ছোট ছোট বাক্যে কথা বলো
-- emoji একটু ব্যবহার করো, বেশি না
-- bold বা markdown ব্যবহার করো না
-- website link শুধু দরকার হলে দাও, বারবার না
+ব্যক্তিত্ব:
+- একদম মানুষের মতো, স্বাভাবিক কথা বলো
+- কাস্টমার যা জিজ্ঞেস করে শুধু সেটার উত্তর দাও
+- আগের কথা মনে রেখে উত্তর দাও
+- ছোট বাক্য, সহজ বাংলা
+- "জি আপু" বা "জি ভাই" দিয়ে শুরু করো
+- emoji খুব কম, স্বাভাবিক কথায়
+- bold বা * ব্যবহার করো না
+- website link বারবার দিও না
 
-কথা বলার ধরন:
-- "জি আপু/ভাই" দিয়ে শুরু করো
-- কাস্টমার বাংলায় লিখলে বাংলায়, ইংরেজিতে লিখলে বাংলায় উত্তর দাও
-- দাম জিজ্ঞেস করলে সরাসরি দাম বলো
-- প্রোডাক্ট না থাকলে বিকল্প suggest করো
-- অর্ডার করতে চাইলে website link দাও
+উদাহরণ:
+কাস্টমার: "এটা কি চুলায় ব্যবহার করা যাবে?"
+রিয়া: "জি আপু, কোন প্রোডাক্টটার কথা বলছেন? নাম বা ছবি দিলে বলতে পারবো।"
+
+কাস্টমার: "টিফিন বক্সের দাম কত?"
+রিয়া: "জি ভাই, Milton 4 Layer Tiffin Box দুই ধরনের আছে — Classic ১৬৯০ টাকা, Tasty ১৫৯০ টাকা। কোনটা নেবেন?"
 
 আমাদের প্রোডাক্ট:
 {catalogue_data if catalogue_data else "এই মুহূর্তে লোড হয়নি"}
@@ -124,7 +138,7 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
 ওয়েবসাইট: dhakaexclusive.org"""
 
         if is_comment:
-            system += "\n\nএটা পোস্টের কমেন্ট। ১-২ লাইনে উত্তর দাও, inbox এ আসতে বলো।"
+            system += "\n\nএটা পোস্টের কমেন্ট। ১ লাইনে বলো এবং inbox এ আসতে বলো।"
 
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -135,7 +149,7 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
             },
             json={
                 "model": "claude-haiku-4-5",
-                "max_tokens": 300,
+                "max_tokens": 250,
                 "system": system,
                 "messages": conversation_history[sender_id]
             }
@@ -143,7 +157,6 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
         data = response.json()
         if "content" in data:
             reply = data["content"][0]["text"]
-            # Reply history তে রাখো
             conversation_history[sender_id].append({
                 "role": "assistant",
                 "content": reply
@@ -188,39 +201,49 @@ def verify():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print(f"DATA: {data}")
     try:
         catalogue_data = get_catalogue_products()
         if data.get("object") == "page":
             for entry in data.get("entry", []):
+                # Messenger মেসেজ
                 for event in entry.get("messaging", []):
                     sender_id = event["sender"]["id"]
                     if "message" in event:
                         msg = event["message"]
-                        # নিজের message ignore করো
                         if msg.get("is_echo"):
                             continue
                         if "text" in msg:
-                            reply = get_claude_response(sender_id, msg["text"], catalogue_data)
+                            text = msg["text"]
+                            # অর্থহীন মেসেজ ignore করো
+                            if not is_meaningful_message(text):
+                                print(f"Ignored: {text}")
+                                continue
+                            print(f"User said: {text}")
+                            reply = get_claude_response(sender_id, text, catalogue_data)
                             send_message(sender_id, reply)
                         elif "attachments" in msg:
                             for attachment in msg["attachments"]:
                                 if attachment["type"] == "image":
                                     image_url = attachment["payload"]["url"]
-                                    reply = analyze_image(image_url, catalogue_data)
+                                    context = str(conversation_history.get(sender_id, ""))
+                                    reply = analyze_image(image_url, catalogue_data, context)
+                                    conversation_history.setdefault(sender_id, []).append({"role": "user", "content": "[ছবি পাঠিয়েছে]"})
+                                    conversation_history[sender_id].append({"role": "assistant", "content": reply})
                                     send_message(sender_id, reply)
                                 elif attachment["type"] == "audio":
                                     send_message(sender_id, "ভয়েস মেসেজ শুনতে পাচ্ছি না, টেক্সটে লিখুন 😊")
 
+                # কমেন্ট — reaction ignore করো
                 for change in entry.get("changes", []):
                     if change.get("field") == "feed":
                         value = change.get("value", {})
+                        # শুধু comment handle করো, reaction না
                         if value.get("item") == "comment" and value.get("verb") == "add":
                             comment_id = value.get("comment_id")
                             comment_text = value.get("message", "")
                             from_id = value.get("from", {}).get("id", "")
-                            # নিজের পেজের comment ignore করো
-                            if comment_text and from_id != "107165985626486":
+                            page_id = "107165985626486"
+                            if comment_text and from_id != page_id and is_meaningful_message(comment_text):
                                 reply = get_claude_response(from_id, comment_text, catalogue_data, is_comment=True)
                                 reply_comment(comment_id, reply)
     except Exception as e:
