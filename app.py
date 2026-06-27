@@ -25,13 +25,18 @@ def get_claude_response(user_message):
             }
         )
         data = response.json()
-        return data["content"][0]["text"]
+        print(f"Claude full response: {data}")
+        if "content" in data:
+            return data["content"][0]["text"]
+        else:
+            print(f"Claude error details: {data}")
+            return "দুঃখিত, একটু পরে চেষ্টা করুন।"
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Exception: {e}")
         return "দুঃখিত, একটু পরে চেষ্টা করুন।"
 
 def send_message(recipient_id, text):
-    requests.post(
+    response = requests.post(
         "https://graph.facebook.com/v18.0/me/messages",
         params={"access_token": PAGE_ACCESS_TOKEN},
         json={
@@ -39,6 +44,7 @@ def send_message(recipient_id, text):
             "message": {"text": text}
         }
     )
+    print(f"Send message result: {response.json()}")
 
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -49,14 +55,16 @@ def verify():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print("DATA:", data)
+    print(f"DATA: {data}")
     try:
         for entry in data.get("entry", []):
             for event in entry.get("messaging", []):
                 if "message" in event and "text" in event["message"]:
                     sender_id = event["sender"]["id"]
                     text = event["message"]["text"]
+                    print(f"User said: {text}")
                     reply = get_claude_response(text)
+                    print(f"Bot reply: {reply}")
                     send_message(sender_id, reply)
     except Exception as e:
         print(f"Webhook error: {e}")
@@ -65,6 +73,15 @@ def webhook():
 @app.route("/")
 def home():
     return "Dhaka Exclusive Bot Running ✅", 200
+
+@app.route("/privacy")
+def privacy():
+    return """
+    <h1>Privacy Policy - Dhaka Exclusive</h1>
+    <p>আমরা আপনার ব্যক্তিগত তথ্য সংগ্রহ করি না।</p>
+    <p>Facebook Messenger-এর মাধ্যমে আসা মেসেজ শুধু কাস্টমার সার্ভিসের জন্য ব্যবহার করা হয়।</p>
+    <p>যোগাযোগ: dhakaexclusive.com</p>
+    """, 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
