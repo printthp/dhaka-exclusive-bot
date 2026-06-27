@@ -3,8 +3,8 @@ import requests
 import threading
 import time
 import base64
-import pg8000.native
 import json
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -15,35 +15,44 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 CATALOGUE_ID = "4177718442481756"
 RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-126eb.up.railway.app")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "printthp/dhaka-exclusive-bot")
 
 IGNORE_PATTERNS = ["🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"]
 
-def get_conn():
-    return pg8000.native.Connection(database_url=DATABASE_URL)
+# ========== Database ==========
+def get_db_conn():
+    import psycopg2
+    return psycopg2.connect(DATABASE_URL)
 
 def init_db():
     try:
-        conn = get_conn()
-        conn.run("""
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS conversations (
                 sender_id TEXT PRIMARY KEY,
                 history JSONB DEFAULT '[]',
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        conn.commit()
+        cur.close()
         conn.close()
-        print("Database initialized")
+        print("Database initialized ✅")
     except Exception as e:
         print(f"DB init error: {e}")
 
 def get_history(sender_id):
     try:
-        conn = get_conn()
-        rows = conn.run("SELECT history FROM conversations WHERE sender_id = :id", id=sender_id)
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT history FROM conversations WHERE sender_id = %s", (sender_id,))
+        row = cur.fetchone()
+        cur.close()
         conn.close()
-        if rows:
-            val = rows[0][0]
-            return val if isinstance(val, list) else json.loads(val)
+        if row:
+            return row[0] if isinstance(row[0], list) else json.loads(row[0])
         return []
     except Exception as e:
         print(f"Get history error: {e}")
@@ -53,17 +62,46 @@ def save_history(sender_id, history):
     try:
         if len(history) > 50:
             history = history[-50:]
-        conn = get_conn()
-        conn.run("""
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("""
             INSERT INTO conversations (sender_id, history, updated_at)
-            VALUES (:id, :h, NOW())
+            VALUES (%s, %s, NOW())
             ON CONFLICT (sender_id) DO UPDATE
-            SET history = :h, updated_at = NOW()
-        """, id=sender_id, h=json.dumps(history))
+            SET history = %s, updated_at = NOW()
+        """, (sender_id, json.dumps(history), json.dumps(history)))
+        conn.commit()
+        cur.close()
         conn.close()
     except Exception as e:
         print(f"Save history error: {e}")
 
+# ========== GitHub Auto-Update ==========
+def github_update_file(filename, new_content, commit_message="Bot auto-update"):
+    try:
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        get_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}"
+        get_resp = requests.get(get_url, headers=headers)
+        sha = get_resp.json().get("sha", "")
+        encoded = base64.b64encode(new_content.encode()).decode()
+        put_resp = requests.put(get_url, headers=headers, json={
+            "message": commit_message,
+            "content": encoded,
+            "sha": sha
+        })
+        if put_resp.status_code in [200, 201]:
+            print(f"GitHub commit successful: {filename}")
+            return True
+        print(f"GitHub commit failed: {put_resp.json()}")
+        return False
+    except Exception as e:
+        print(f"GitHub error: {e}")
+        return False
+
+# ========== Helpers ==========
 def is_meaningful_message(text):
     text = text.strip()
     if len(text) <= 2:
@@ -116,16 +154,15 @@ def get_product_image_url(product_name):
         return ""
 
 def send_message(recipient_id, text):
-    response = requests.post(
+    requests.post(
         "https://graph.facebook.com/v18.0/me/messages",
         params={"access_token": PAGE_ACCESS_TOKEN},
         json={"recipient": {"id": recipient_id}, "message": {"text": text}}
     )
-    print(f"Send: {response.status_code}")
 
 def send_image(recipient_id, image_url):
     try:
-        response = requests.post(
+        requests.post(
             "https://graph.facebook.com/v18.0/me/messages",
             params={"access_token": PAGE_ACCESS_TOKEN},
             json={
@@ -138,17 +175,15 @@ def send_image(recipient_id, image_url):
                 }
             }
         )
-        print(f"Image sent: {response.status_code}")
     except Exception as e:
         print(f"Image send error: {e}")
 
 def reply_comment(comment_id, text):
-    response = requests.post(
+    requests.post(
         f"https://graph.facebook.com/v18.0/{comment_id}/replies",
         params={"access_token": PAGE_ACCESS_TOKEN},
         json={"message": text}
     )
-    print(f"Comment reply: {response.status_code}")
 
 def analyze_image(image_url, catalogue_data, history):
     try:
@@ -171,30 +206,25 @@ def analyze_image(image_url, catalogue_data, history):
                 "model": "claude-opus-4-6",
                 "max_tokens": 300,
                 "system": f"""তুমি Dhaka Exclusive-এর sales agent রিয়া।
-
 আমাদের প্রোডাক্ট:
 {catalogue_data}
-
 আগের কথা:
 {context}
-
 নিয়ম:
 - ছবি দেখে প্রোডাক্ট চিনে catalogue থেকে দাম বলো
 - plain text এ লেখো, bold বা * বা ** একদম ব্যবহার করো না
 - ২-৩ লাইনে স্বাভাবিক বাংলায় বলো
-- থাকলে দাম বলো এবং order করতে উৎসাহিত করো
-- না থাকলে বলো: এটা এখন নেই, তবে আমাদের আরও অনেক প্রোডাক্ট আছে""",
+- থাকলে দাম বলো এবং order করতে উৎসাহিত করো""",
                 "messages": [{
                     "role": "user",
                     "content": [
                         {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": image_data}},
-                        {"type": "text", "text": "এই প্রোডাক্টটা কী? দাম কত? আমাদের catalogue এ আছে?"}
+                        {"type": "text", "text": "এই প্রোডাক্টটা কী? দাম কত?"}
                     ]
                 }]
             }
         )
         data = response.json()
-        print(f"Image analysis response: {data}")
         if "content" in data:
             return data["content"][0]["text"]
         return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখুন।"
@@ -215,7 +245,7 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
 - ছোট ছোট বাক্য
 - জি আপু বা জি ভাই দিয়ে শুরু করো
 - আগের সব কথা মনে রেখে কথা বলো
-- emoji খুব কম, ১-২টা
+- emoji খুব কম
 
 ডেলিভারি চার্জ:
 - ঢাকার ভেতরে: ৮০ টাকা
@@ -238,7 +268,7 @@ def get_claude_response(sender_id, user_message, catalogue_data, is_comment=Fals
 ৩. সম্পূর্ণ ঠিকানা
 ৪. ঢাকার ভেতরে নাকি বাইরে
 
-সব তথ্য পেলে এই format এ summary দাও (plain text, কোনো bold নেই):
+সব তথ্য পেলে plain text এ summary দাও:
 অর্ডার নিশ্চিত!
 প্রোডাক্ট: [নাম]
 দাম: [দাম]
@@ -346,6 +376,20 @@ def webhook():
     except Exception as e:
         print(f"Webhook error: {e}")
     return "OK", 200
+
+@app.route("/update-bot", methods=["POST"])
+def update_bot():
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    new_code = data.get("code", "")
+    if not new_code:
+        return jsonify({"error": "No code provided"}), 400
+    success = github_update_file("app.py", new_code, "Auto-update from Claude")
+    if success:
+        return jsonify({"status": "success"}), 200
+    return jsonify({"error": "GitHub update failed"}), 500
 
 @app.route("/")
 def home():
