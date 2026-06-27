@@ -18,7 +18,14 @@ RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-126eb.up.rai
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "printthp/dhaka-exclusive-bot")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash-latest")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+# Fallback list if the default model is not available for the current API version
+GEMINI_FALLBACK_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash",
+]
 
 IGNORE_PATTERNS = ["🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"]
 
@@ -883,6 +890,31 @@ def home():
 @app.route("/privacy")
 def privacy():
     return "<h1>Privacy Policy - Dhaka Exclusive</h1><p>আমরা আপনার তথ্য সংগ্রহ করি না।</p>", 200
+
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "platform": "facebook_messenger",
+        "model": GEMINI_MODEL,
+        "gemini_configured": bool(GEMINI_API_KEY),
+        "messenger_configured": bool(PAGE_ACCESS_TOKEN),
+        "db_configured": bool(DATABASE_URL),
+        "catalogue_configured": bool(CATALOGUE_ID and PAGE_ACCESS_TOKEN)
+    }), 200
+
+init_db()
+
+# Initial catalogue sync in background
+threading.Thread(target=sync_catalogue_task, daemon=True).start()
+
+thread = threading.Thread(target=keep_alive)
+thread.daemon = True
+thread.start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+��পনার তথ্য সংগ্রহ করি না।</p>", 200
 
 @app.route("/health")
 def health():

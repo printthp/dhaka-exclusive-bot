@@ -1,5 +1,6 @@
 [phases.setup]
 nixPkgs = ["python313", "postgresql_15"]
+aptPackages = ["libpq-dev", "libpq5"]
 
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
