@@ -1037,6 +1037,74 @@ def health():
         "catalogue_configured": bool(CATALOGUE_ID and PAGE_ACCESS_TOKEN)
     }), 200
 
+@app.route("/debug-gemini", methods=["GET"])
+def debug_gemini():
+    test_prompt = "Say hello in one word."
+    results = {}
+    if not GEMINI_API_KEY:
+        return jsonify({"gemini_key_set": False, "error": "GEMINI_API_KEY missing"}), 200
+    for api_version in ["v1beta", "v1"]:
+        for model in ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-latest",
+                      "gemini-2.0-flash", "gemini-2.5-flash", "gemini-pro", "gemini-1.5-flash-8b"]:
+            try:
+                payload = {
+                    "contents": [{"role": "user", "parts": [{"text": test_prompt}]}],
+                    "generationConfig": {"maxOutputTokens": 30}
+                }
+                text, err = _gemini_generate(payload, model, api_version)
+                key = f"{api_version}/{model}"
+                results[key] = {"ok": bool(text), "text": text[:80] if text else "", "err": err[:160] if err else ""}
+            except Exception as e:
+                results[f"{api_version}/{model}"] = {"exception": str(e)[:200]}
+    working = [k for k, v in results.items() if v.get("ok")]
+    return jsonify({
+        "gemini_key_set": True,
+        "working_models": working,
+        "results": results
+    }), 200
+
+@app.route("/test-flow", methods=["POST"])
+def test_flow():
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json or {}
+    sender = data.get("sender_id", "test_user_xyz")
+    msg = data.get("message", "hello")
+    out = {
+        "page_token_set": bool(PAGE_ACCESS_TOKEN),
+        "gemini_key_set": bool(GEMINI_API_KEY),
+        "catalogue_id_set": bool(CATALOGUE_ID),
+    }
+    try:
+        cat = get_catalogue_products()
+        out["catalogue_len"] = len(cat or "")
+        out["catalogue_sample"] = (cat or "")[:200]
+    except Exception as e:
+        out["catalogue_error"] = str(e)[:200]
+    try:
+        gemini_out = call_gemini_text(
+            prompt=msg,
+            system="You are Riya, sales agent. Reply briefly in Bengali.",
+            max_tokens=120
+        )
+        out["gemini_raw"] = gemini_out[:300]
+    except Exception as e:
+        out["gemini_error"] = str(e)[:300]
+    try:
+        reply = get_gemini_reply(sender, msg, "")
+        out["final_reply"] = reply[:500]
+        out["final_reply_len"] = len(reply)
+    except Exception as e:
+        out["reply_error"] = str(e)[:300]
+    try:
+        if PAGE_ACCESS_TOKEN:
+            send_result = send_message(sender, "test from /test-flow endpoint")
+            out["send_result"] = send_result
+    except Exception as e:
+        out["send_error"] = str(e)[:300]
+    return jsonify(out), 200
+
 init_db()
 
 # Initial catalogue sync in background
