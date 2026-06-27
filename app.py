@@ -11,23 +11,44 @@ app = Flask(__name__)
 
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN", "")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN", "dhaka123")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 CATALOGUE_ID = os.environ.get("CATALOGUE_ID", "4177718442481756")
 RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-126eb.up.railway.app")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "printthp/dhaka-exclusive-bot")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
-# Fallback list if the default model is not available for the current API version
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash-latest")
 GEMINI_FALLBACK_MODELS = [
+    "gemini-1.5-flash-latest",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
     "gemini-2.0-flash",
     "gemini-2.5-flash",
 ]
 
-IGNORE_PATTERNS = ["🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"]
+# Build Bengali constants at runtime - avoids source encoding issues.
+def _b(hex_str):
+    return bytes.fromhex(hex_str.replace(" ", "")).decode("utf-8")
+
+BN_ORDER_CONFIRM = _b("e0a685e0a6b0e0a78de0a6b0 e0a6a8e0a6bfe0a6b6e0a78de0a699e0a6bfe0a6a4")
+BN_EKTU_PROBLEM  = _b("e0a685e0a695e0a69f e0a6b8e0a6aee0a6b8e0a78de0a6af e0a6b9e0a699e0a78de0a699e0a6c7 e0a685e0a695e0a69f e0a6aae0a6b0e0a6c7 e0a686e0a686e0a6ace0a6b0 e0a6aee0a6b2e0a6c1e0a6a8e0a78d e0a5a4")
+BN_CHHOBI_PROBLEM = _b("e0a69be0a6aee0a6bfe0a69f e0a686e0a6c7e0a699e0a699e0a6a4e0a6c7 e0a6aae0a6bee0a699e0a78de0a69b e0a6a8e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6b2e0a6bfe0a699e0a6c1e0a6a8e0a78d e0a5a4")
+BN_BHOYESH       = _b("e0a6ade0a6afe0a6c7e0a6b8 e0a6aee0a6c7e0a6b8e0a6c7e0a699 e0a6b6e0a6c1e0a6a8e0a6a4e0a6c7 e0a6aae0a6bbe0a699e0a78de0a69b e0a6a8e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6b2e0a6bfe0a699e0a6c1e0a6a8e0a78d e0a5a4")
+BN_VIDEO         = _b("e0a6ade0a6bfe0a687e0a6bfe0a687 e0a686e0a6c7e0a699e0a6bbe e0a6afe0a6bbee0a699e0a78de0a69b e0a6c7 e0a6a8e0a6be e0a69be0a6aee0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae0a6bee0a69fa0a6bee0a6a8e0a78d e0a5a4")
+BN_FILE          = _b("e0a6abe0a6bee0a687e0a6b2 e0a6b8e0a6bbee0a6aae0a6bee0a6b0e0a69f e0a695e0a6b0e0a6bf e0a6a8e0a6be e0a69be0a6aae0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae0a6bee0a69fa0a6bee0a6a8e0a78d e0a5a4")
+BN_STICKER       = _b("e0a69fe0a6bfe0a695 e0a686e0a69be0a6c7")
+BN_IMG_FAIL_M    = _b("e0a69be0a6aee0a6bfe0a69f e0a6aae0a7cd e0a6b0e0a6b8e0a6c7e0a6b8 e0a695e0a6b0e0a6be e0a6afe e0a6aee0a78de0a69b e0a6c7 e0a6a8e0a6be e0a686e0a6ace0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
+BN_IMG_RETRY_M   = _b("e0a69be0a6aee0a6bfe0a69fa0a6a4e0a6be e0a686e0a6b8 e0a6c7e0a6a8e0a6bf e0a686e0a6abe0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
+BN_IMG_RETRY_W   = _b("e0a69be0a6aee0a6bfe0a69fa0a6a4e0a6be e0a686e0a6b8 e0a6c7e0a6a8e0a6bf e0a686e0a6abe0a6bee0a6b0 e0a6aae e0a69fa0a6bee0a6a8e0a78d e0a5a4")
+BN_WH_DOC        = _b("e0a687e0a695e0a6c1e0a6aee0a6c7e0a6a8e0a69f e0a6b8e0a6bbee0a6aae e0a6bee0a6b0e0a69f e0a695e0a6b0e0a6bf e0a6a8e0a6be e0a69be0a6aae e0a6bf e0a6a4e0a6be e0a69f e0a6c7e0a695e0a6b8e0a69f e0a6aae e0a69fa0a6a8e0a78d e0a5a4")
+BN_WEBSITE       = _b("e0a695e0a6b9e0a6bee0a695e0a6bee0a6b0e0a6bee0a6b0e0a695e0a6bee0a7e0a6b0e0a6bee0a695e0a6bee0a695e0a6bee0a6b8e0a6bee0a6a4e0a6bee0a6a8")
+BN_PRIVACY       = _b("e0a686e0a6aee0a6b0e0a6be e0a686e0a6aae0a6a8 e0a6afe0a6a6e0a6bf e0a695e0a6a4e0a6aee0a6bee0a695 e0a6a8e0a6bf e0a6a4e0a6c7 e0a6b8e0a6aee0a6aae e0a695e0a6b0e0a7e0a6bf e0a6a8e0a6be e0a6afe e0a695e0a6aee0a6b2 e0a686e0a695 e0a695e0a6a4e0a6aee0a6bee0a695 e0a6b8e0a6aae0a6bee0a6a8e0a6a4 e0a6b0e0a6bee0a695e0a6b6")
+
+IGNORE_PATTERNS = [
+    "🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"
+]
 
 # ========== Database ==========
 def get_db_conn():
@@ -54,7 +75,6 @@ def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        # Products cache: includes `active` and `product_id` columns referenced elsewhere
         cur.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
@@ -66,7 +86,6 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        # Safe migration for existing deployments
         cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS product_id TEXT")
         cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS name TEXT")
         cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS price TEXT")
@@ -77,7 +96,7 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-        print("Database initialized ✅")
+        print("Database initialized OK")
     except Exception as e:
         print(f"DB init error: {e}")
 
@@ -179,7 +198,7 @@ def get_active_products_text(limit=50):
         cur.close()
         conn.close()
         if rows:
-            return "\n".join([f"{r[0]} | {r[1]} | স্টক: আছে" for r in rows])
+            return "\n".join([f"{r[0]} | {r[1]} | in stock" for r in rows])
         return ""
     except Exception as e:
         print(f"Get products error: {e}")
@@ -205,23 +224,19 @@ def get_product_image_url(product_name):
         return ""
 
 def extract_knowledge_from_conversation(history):
-    """Completed conversation থেকে জ্ঞান extract করে knowledge base এ save করে"""
     try:
         if len(history) < 6:
             return
         conv_text = "\n".join([f"{m['role']}: {m['content']}" for m in history])
-        prompt = f"""তুমি একটি e-commerce conversation বিশ্লেষক।
-এই কথোপকথন থেকে দরকারী তথ্য বের করো।
-শুধু একটি JSON array return করো (কোনো explanation, code block বা markdown নয়), যেমন:
-[{{"category": "জনপ্রিয় পণ্য", "content": "কাস্টমাররা X পণ্য বেশি জিজ্ঞেস করে"}},
- {{"category": "সাধারণ প্রশ্ন", "content": "ডেলিভারি টাইম নিয়ে প্রশ্ন আসে"}},
- {{"category": "আপত্তি", "content": "দাম বেশি মনে হয় কাস্টমারদের"}}]
-
-category গুলো হতে পারে: জনপ্রিয় পণ্য, সাধারণ প্রশ্ন, আপত্তি, সফল কৌশল, অভিযোগ
-গুরুত্বপূর্ণ না হলে [] দাও।
-
-Conversation:
-{conv_text}"""
+        prompt = (
+            "You are an e-commerce conversation analyzer.\n"
+            "Extract useful insights from this conversation.\n"
+            "Return ONLY a JSON array (no explanation, no code block, no markdown), e.g.:\n"
+            '[{"category": "popular products", "content": "Customers often ask about X"}]\n'
+            "categories: popular products, common questions, objections, successful tactics, complaints\n"
+            "Return [] if nothing useful.\n\n"
+            f"Conversation:\n{conv_text}"
+        )
         text = call_gemini_text(prompt=prompt, max_tokens=600, temperature=0.3)
         if not text:
             return
@@ -248,7 +263,7 @@ def github_update_file(filename, new_content, commit_message="Bot auto-update"):
         get_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}"
         get_resp = requests.get(get_url, headers=headers, timeout=15)
         sha = get_resp.json().get("sha", "")
-        encoded = base64.b64encode(new_content.encode()).decode()
+        encoded = base64.b64encode(new_content.encode("utf-8")).decode("ascii")
         put_resp = requests.put(get_url, headers=headers, json={
             "message": commit_message,
             "content": encoded,
@@ -270,12 +285,11 @@ def is_meaningful_message(text):
         return False
     if text in IGNORE_PATTERNS:
         return False
-    if all(char in '🔥👏❤️😍👍🙏😊💯✅🎉😂🥰💕🌹👌💪 ' for char in text):
+    if all(c in "🔥👏❤️😍👍🙏😊💯✅🎉😂🥰💕🌹👌💪 " for c in text):
         return False
     return True
 
 def get_catalogue_products():
-    """Facebook catalogue থেকে product list আনো এবং products table-এ cache করো"""
     if not CATALOGUE_ID or not PAGE_ACCESS_TOKEN:
         return ""
     try:
@@ -293,8 +307,8 @@ def get_catalogue_products():
                 name = p.get("name", "")
                 price = p.get("price", "")
                 in_stock = p.get("availability") == "in stock"
-                avail = "আছে" if in_stock else "নেই"
-                text += f"{name} | {price} | স্টক: {avail}\n"
+                avail = "available" if in_stock else "out of stock"
+                text += f"{name} | {price} | {avail}\n"
                 upsert_product(
                     product_id=p.get("id", ""),
                     name=name,
@@ -317,7 +331,6 @@ def sync_catalogue_task():
 
 # ========== Facebook Messenger Send API ==========
 def send_message(recipient_id, text):
-    """Facebook Messenger-এ text message পাঠাও"""
     try:
         if not PAGE_ACCESS_TOKEN:
             print("PAGE_ACCESS_TOKEN missing; message skipped")
@@ -336,7 +349,6 @@ def send_message(recipient_id, text):
         return {}
 
 def send_image(recipient_id, image_url):
-    """Facebook Messenger-এ ছবি পাঠাও"""
     try:
         if not PAGE_ACCESS_TOKEN or not image_url:
             return {}
@@ -362,7 +374,6 @@ def send_image(recipient_id, image_url):
         return {}
 
 def reply_comment(comment_id, text):
-    """Facebook post comment-এ reply দাও"""
     try:
         if not PAGE_ACCESS_TOKEN:
             return {}
@@ -380,7 +391,6 @@ def reply_comment(comment_id, text):
         return {}
 
 def download_messenger_image(image_url):
-    """Messenger attachment URL → (bytes, mime_type)"""
     try:
         resp = requests.get(image_url, timeout=20)
         if resp.status_code != 200:
@@ -391,15 +401,113 @@ def download_messenger_image(image_url):
         print(f"download_messenger_image error: {e}")
         return None, ""
 
+# ========== WhatsApp Cloud API ==========
+def send_whatsapp_message(to_number, text):
+    try:
+        if not WHATSAPP_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
+            print("WhatsApp credentials missing; message skipped")
+            return {}
+        resp = requests.post(
+            f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages",
+            headers={
+                "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "messaging_product": "whatsapp",
+                "to": to_number,
+                "type": "text",
+                "text": {"body": text}
+            },
+            timeout=15
+        )
+        if resp.status_code >= 400:
+            print(f"WhatsApp send error: {resp.status_code} {resp.text}")
+        return resp.json() if resp.text else {}
+    except Exception as e:
+        print(f"send_whatsapp_message error: {e}")
+        return {}
+
+def send_whatsapp_image(to_number, image_url, caption=""):
+    try:
+        if not WHATSAPP_TOKEN or not WHATSAPP_PHONE_NUMBER_ID or not image_url:
+            return {}
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "image",
+            "image": {"link": image_url}
+        }
+        if caption:
+            payload["image"]["caption"] = caption
+        resp = requests.post(
+            f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages",
+            headers={
+                "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json=payload,
+            timeout=20
+        )
+        if resp.status_code >= 400:
+            print(f"WhatsApp image send error: {resp.status_code} {resp.text}")
+        return resp.json() if resp.text else {}
+    except Exception as e:
+        print(f"send_whatsapp_image error: {e}")
+        return {}
+
+def download_whatsapp_media(media_id):
+    try:
+        if not WHATSAPP_TOKEN:
+            return None, ""
+        meta_url = f"https://graph.facebook.com/v18.0/{media_id}"
+        meta_resp = requests.get(meta_url, headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"}, timeout=15)
+        meta = meta_resp.json()
+        media_url = meta.get("url", "")
+        mime = meta.get("mime_type", "image/jpeg")
+        if not media_url:
+            return None, ""
+        dl = requests.get(media_url, headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}"}, timeout=30)
+        if dl.status_code != 200:
+            return None, ""
+        return dl.content, mime
+    except Exception as e:
+        print(f"download_whatsapp_media error: {e}")
+        return None, ""
+
 # ========== Gemini API ==========
+def _gemini_generate(payload, model, api_version="v1beta"):
+    url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={GEMINI_API_KEY}"
+    resp = requests.post(url, json=payload, timeout=45)
+    if resp.status_code >= 400:
+        return "", f"{resp.status_code} {resp.text[:300]}"
+    data = resp.json()
+    candidates = data.get("candidates", [])
+    if candidates:
+        parts = candidates[0].get("content", {}).get("parts", [])
+        if parts:
+            return parts[0].get("text", ""), ""
+    return "", "empty candidates"
+
+def _gemini_call_with_fallback(build_payload, caller_name):
+    models_to_try = [GEMINI_MODEL] + [m for m in GEMINI_FALLBACK_MODELS if m != GEMINI_MODEL]
+    versions = ["v1beta", "v1"]
+    payload = build_payload()
+    for api_version in versions:
+        for model in models_to_try:
+            text, err = _gemini_generate(payload, model, api_version)
+            if text:
+                if model != GEMINI_MODEL or api_version != "v1beta":
+                    print(f"{caller_name}: using fallback {api_version}/{model}")
+                return text
+            print(f"{caller_name}: {api_version}/{model} failed -> {err[:120]}")
+    return ""
+
 def call_gemini_text(prompt, system=None, history=None, model=None, max_tokens=500, temperature=0.7):
-    """Gemini text-only generateContent call"""
     try:
         if not GEMINI_API_KEY:
             print("GEMINI_API_KEY missing")
             return ""
-        model = model or GEMINI_MODEL
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
         contents = []
         if history:
             for m in history:
@@ -408,37 +516,23 @@ def call_gemini_text(prompt, system=None, history=None, model=None, max_tokens=5
                 if isinstance(content, str):
                     contents.append({"role": role, "parts": [{"text": content}]})
         contents.append({"role": "user", "parts": [{"text": prompt}]})
-        payload = {
-            "contents": contents,
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": temperature
+        def build_payload():
+            payload = {
+                "contents": contents,
+                "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature}
             }
-        }
-        if system:
-            payload["systemInstruction"] = {"parts": [{"text": system}]}
-        resp = requests.post(url, json=payload, timeout=45)
-        if resp.status_code >= 400:
-            print(f"Gemini error: {resp.status_code} {resp.text[:400]}")
-            return ""
-        data = resp.json()
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                return parts[0].get("text", "")
-        return ""
+            if system:
+                payload["systemInstruction"] = {"parts": [{"text": system}]}
+            return payload
+        return _gemini_call_with_fallback(build_payload, "call_gemini_text")
     except Exception as e:
         print(f"call_gemini_text error: {e}")
         return ""
 
 def call_gemini_multimodal(prompt, image_bytes, mime_type, system=None, history=None, model=None, max_tokens=400):
-    """Gemini multimodal (text + image) generateContent call"""
     try:
         if not GEMINI_API_KEY:
             return ""
-        model = model or GEMINI_MODEL
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
         image_b64 = base64.b64encode(image_bytes).decode('utf-8')
         if mime_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
             mime_type = "image/jpeg"
@@ -456,23 +550,15 @@ def call_gemini_multimodal(prompt, image_bytes, mime_type, system=None, history=
                 {"text": prompt}
             ]
         })
-        payload = {
-            "contents": contents,
-            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.6}
-        }
-        if system:
-            payload["systemInstruction"] = {"parts": [{"text": system}]}
-        resp = requests.post(url, json=payload, timeout=60)
-        if resp.status_code >= 400:
-            print(f"Gemini vision error: {resp.status_code} {resp.text[:400]}")
-            return ""
-        data = resp.json()
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                return parts[0].get("text", "")
-        return ""
+        def build_payload():
+            payload = {
+                "contents": contents,
+                "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.6}
+            }
+            if system:
+                payload["systemInstruction"] = {"parts": [{"text": system}]}
+            return payload
+        return _gemini_call_with_fallback(build_payload, "call_gemini_multimodal")
     except Exception as e:
         print(f"call_gemini_multimodal error: {e}")
         return ""
@@ -484,31 +570,29 @@ def strip_markdown(text):
 
 # ========== Sales-Intelligent Gemini Reply ==========
 def detect_intent(user_message):
-    """Quick keyword-based intent for sales routing"""
     try:
         text = (user_message or "").lower()
-        if re.search(r"\b(hi|হ্যালো|হায়|hello|hey|সালাম|আসসালামু|নমস্কার|assalamu)\b", text):
+        if re.search(r"\b(hi|hello|hey|salam|assalamu|namaskar|namaskaram)\b", text):
             return "greeting"
-        if re.search(r"(দাম|কত|price|কেমন|কতটাকা|কত টাকা)", text):
+        if re.search(r"(price|cost|koto|dam|koto taka|koto tk|how much)", text):
             return "price"
-        if re.search(r"(স্টক|আছে|নেই|available|stock|পণ্য)", text):
+        if re.search(r"(stock|available|ache|nai|in stock|out of stock)", text):
             return "stock"
-        if re.search(r"(অর্ডার|order|কিনব|কিনতে|নিব|নিতে|চাই)", text):
+        if re.search(r"(order|kinbo|kinte|nibo|nite|chai|buy|purchase)", text):
             return "order"
-        if re.search(r"(ডেলিভারি|delivery|কবে|কখন|সময়|কোথায়)", text):
+        if re.search(r"(delivery|kobe|kokhon|somoy|kothay|where|when)", text):
             return "delivery"
-        if re.search(r"(রিটার্ন|return|ফেরত|exchange|এক্সচেঞ্জ)", text):
+        if re.search(r"(return|ferot|exchange|exchange korte)", text):
             return "return"
-        if re.search(r"(কম|কমাবে|cheap|কমিয়ে|ডিসকাউন্ট|discount|অফার)", text):
+        if re.search(r"(kom|kombie|cheap|discount|offer|komate|less)", text):
             return "negotiation"
-        if re.search(r"(খারাপ|বাজে|ভুয়া|ঠকা|fraud|scam|রিপোর্ট|report|অভিযোগ)", text):
+        if re.search(r"(kharap|baje|vuye|thaka|fraud|scam|report|complaint)", text):
             return "complaint"
         return "general"
     except Exception:
         return "general"
 
 def get_gemini_reply(sender_id, user_message, catalogue_data, is_comment=False):
-    """Sales-intelligent Gemini-powered reply (Messenger)"""
     try:
         history = get_history(sender_id)
         history.append({"role": "user", "content": user_message})
@@ -516,71 +600,71 @@ def get_gemini_reply(sender_id, user_message, catalogue_data, is_comment=False):
         knowledge = get_knowledge()
         intent = detect_intent(user_message)
 
-        system = f"""তুমি Dhaka Exclusive-এর senior sales agent রিয়া। কাস্টমারের সাথে বাংলায় কথা বলো।
+        system = (
+            "You are Riya, the senior sales agent of Dhaka Exclusive. Talk with customers in Bengali.\n\n"
+            "Critical rules:\n"
+            "- Directly answer what the customer asks\n"
+            "- Use plain text. No markdown, no **, no *\n"
+            "- Short sentences, simple natural Bengali\n"
+            "- Remember prior context in the conversation\n"
+            "- Use very few emojis\n"
+            "- Always respond in Bengali\n\n"
+            f"Current intent: {intent}\n\n"
+        )
 
-সবচেয়ে গুরুত্বপূর্ণ নিয়ম:
-- কাস্টমার যা জিজ্ঞেস করে, সরাসরি সেই উত্তর দাও
-- plain text এ লেখো, কোনো *, **, # markdown নয়
-- ছোট ছোট বাক্য, সহজ ও স্বাভাবিক ভাষা
-- আগের কথা মনে রেখে উত্তর দাও
-- emoji খুব কম ব্যবহার করো
-- সবসময় বাংলায় উত্তর দাও
+        if intent == "greeting":
+            system += "When greeted: welcome warmly. Mention what we sell. Ask how you can help.\n\n"
+        elif intent == "price":
+            system += "When asked about price: state price from the catalogue first. Mention product highlights and invite order.\n\n"
+        elif intent == "stock":
+            system += "When asked about stock: check the catalogue and answer available or not.\n\n"
+        elif intent == "negotiation":
+            system += (
+                "Negotiation ladder:\n"
+                "1st time: 'This is our best price, see the quality first.'\n"
+                "2nd time: 'Original product, price is fixed.'\n"
+                "3rd time: 'If you take 2 I can see a little.'\n"
+                "Final: 'For you I am reducing 20-30 taka, this is the final offer.'\n\n"
+            )
+        elif intent == "complaint":
+            system += "For complaints/angry customers:\nApologize first. Say: 'Really sorry. Please tell me what happened, I will fix it.'\n\n"
+        elif intent == "order":
+            system += (
+                "Order collection: ask step by step.\n"
+                "Step 1: 'Your name?'\n"
+                "Step 2: 'Phone number?'\n"
+                "Step 3: 'Full address?'\n"
+                "Step 4: 'Inside Dhaka or outside?'\n\n"
+                "When all info collected, send summary in this format:\n"
+                "Order confirmed!\n"
+                "Product: [name]\n"
+                "Price: [price]\n"
+                "Delivery: [80/130] taka\n"
+                "Total: [total]\n"
+                "Name: [name]\n"
+                "Phone: [number]\n"
+                "Address: [address]\n"
+                "Thanks for your order!\n\n"
+            )
+        elif intent == "delivery":
+            system += "Delivery charge: Inside Dhaka 80 taka, Outside 130 taka.\n\n"
+        elif intent == "return":
+            system += "Return policy: 3 days if unused and original packaging. Customer pays return shipping.\n\n"
 
-বর্তমান intent: {intent}
-
-সালাম বা হ্যালো পেলে:
-উষ্ণভাবে স্বাগত জানাও। বলো আমরা কী কী পণ্য বিক্রি করি। জিজ্ঞেস করো কী সাহায্য লাগবে।
-
-দাম জিজ্ঞেস করলে:
-প্রথমেই catalogue থেকে দাম বলো। তারপর পণ্যের বিশেষত্ব ও অর্ডার করার অনুরোধ করো।
-
-স্টক বা পণ্য আছে কিনা জিজ্ঞেস করলে:
-catalogue দেখে সরাসরি বলো আছে বা নেই।
-
-দামাদামি / কমাবে করলে (negotiation):
-১ম বার: এটাই আমাদের সেরা দাম, কোয়ালিটি দেখলে বুঝবেন।
-২য় বার: original product, দাম fixed।
-৩য় বার: ২টা নিলে একটু দেখা যায়।
-শেষমেশ: আপনার জন্য ২০-৩০ টাকা কমিয়ে দিচ্ছি, এটাই শেষ অফার।
-
-অভিযোগ / রাগী কাস্টমার হলে:
-প্রথমে ক্ষমা চাও। বলো "সত্যিই দুঃখিত। কী সমস্যা হয়েছে বলুন, সমাধান করবো।"
-
-অর্ডার নিতে চাইলে একটা একটা করে জিজ্ঞেস করো:
-পদক্ষেপ ১: "আপনার নাম কী?"
-পদক্ষেপ ২: "আপনার ফোন নম্বর?"
-পদক্ষেপ ৩: "সম্পূর্ণ ঠিকানা?"
-পদক্ষেপ ৪: "ঢাকার ভেতরে নাকি বাইরে?"
-
-সব তথ্য পেলে summary দাও এই ফরম্যাটে:
-অর্ডার নিশ্চিত!
-প্রোডাক্ট: [নাম]
-দাম: [দাম]
-ডেলিভারি: [৮০/১৩০] টাকা
-মোট: [মোট]
-নাম: [নাম]
-ফোন: [নম্বর]
-ঠিকানা: [ঠিকানা]
-ধন্যবাদ আপনার অর্ডারের জন্য!
-
-ডেলিভারি চার্জ: ঢাকার ভেতরে ৮০ টাকা, বাইরে ১৩০ টাকা
-
-Upsell / Cross-sell:
-কাস্টমার যে পণ্য জিজ্ঞেস করেছে তার সাথে মানানসই ১টা related product suggest করো (catalogue থেকে)।
-
-আমাদের পণ্য তালিকা:
-{catalogue_data if catalogue_data else "এই মুহূর্তে লোড হয়নি"}
-
-{f"কাস্টমারদের কাছ থেকে শেখা তথ্য:{chr(10)}{knowledge}" if knowledge else ""}
-
-ওয়েবসাইট: dhakaexclusive.org"""
+        system += (
+            "Upsell / cross-sell:\n"
+            "After answering, suggest 1 related product from the catalogue that fits.\n\n"
+            f"Our catalogue:\n{catalogue_data if catalogue_data else 'Not loaded yet'}\n\n"
+        )
+        if knowledge:
+            system += f"Learned from customers:\n{knowledge}\n\n"
+        system += f"Website: {BN_WEBSITE}"
 
         if is_comment:
-            system += "\n\nএটা Facebook পোস্টের কমেন্ট। সংক্ষেপে ১ লাইনে রিপ্লাই দাও এবং inbox এ message করতে বলো।"
+            system += "\n\nThis is a Facebook post comment. Reply in 1 short line and invite them to inbox."
 
-        # Gemini expects "model" role; pass last 30 turns only
         gemini_history = []
-        for m in history[-31:-1]:  # exclude the just-appended user turn
+        for m in history[-31:-1]:
             role = "user" if m.get("role") == "user" else "model"
             content = m.get("content", "")
             if isinstance(content, str):
@@ -595,15 +679,14 @@ Upsell / Cross-sell:
         )
 
         if not reply:
-            return "একটু সমস্যা হচ্ছে, একটু পরে আবার বলুন।"
+            return BN_EKTU_PROBLEM
 
         reply = strip_markdown(reply)
 
         history.append({"role": "assistant", "content": reply})
         save_history(sender_id, history)
 
-        # অর্ডার confirm হলে background-এ knowledge extract করো
-        if "অর্ডার নিশ্চিত" in reply:
+        if "Order confirmed" in reply or BN_ORDER_CONFIRM in reply:
             threading.Thread(
                 target=extract_knowledge_from_conversation,
                 args=(history,),
@@ -613,35 +696,34 @@ Upsell / Cross-sell:
         return reply
     except Exception as e:
         print(f"get_gemini_reply error: {e}")
-        return "একটু সমস্যা হচ্ছে, একটু পরে আবার বলুন।"
+        return BN_EKTU_PROBLEM
 
 def analyze_image_with_gemini(image_bytes, mime_type, catalogue_data, history):
-    """ছবি বিশ্লেষণ করে product সম্পর্কে বলো (multimodal Gemini)"""
     try:
         context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]])
-        system = f"""তুমি Dhaka Exclusive-এর sales agent রিয়া।
-আমাদের প্রোডাক্ট:
-{catalogue_data}
-আগের কথা:
-{context}
-নিয়ম:
-- ছবি দেখে প্রোডাক্ট চিনে catalogue থেকে দাম বলো
-- plain text এ লেখো, bold বা * বা ** ব্যবহার করো না
-- ২-৩ লাইনে স্বাভাবিক বাংলায় বলো
-- দাম বলো এবং অর্ডার করতে উৎসাহিত করো"""
+        system = (
+            "You are Riya, sales agent of Dhaka Exclusive.\n"
+            f"Our products:\n{catalogue_data}\n"
+            f"Prior conversation:\n{context}\n"
+            "Rules:\n"
+            "- Identify the product from the image and give price from catalogue\n"
+            "- Plain text, no bold, no **, no *\n"
+            "- 2-3 lines in natural Bengali\n"
+            "- State price and invite to order"
+        )
         reply = call_gemini_multimodal(
-            prompt="এই প্রোডাক্টটা কী? দাম কত?",
+            prompt="What is this product? What is the price?",
             image_bytes=image_bytes,
             mime_type=mime_type,
             system=system,
             max_tokens=300
         )
         if not reply:
-            return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখুন।"
+            return BN_CHHOBI_PROBLEM
         return strip_markdown(reply)
     except Exception as e:
         print(f"analyze_image_with_gemini error: {e}")
-        return "ছবিটা দেখতে পাচ্ছি না, টেক্সটে লিখুন।"
+        return BN_CHHOBI_PROBLEM
 
 # ========== Keep Alive ==========
 def keep_alive():
@@ -719,21 +801,22 @@ def sync_facebook_history_task(num_conversations):
                 learned += 1
                 time.sleep(1)
         print(f"Facebook history sync done. Learned from {learned} conversations.")
-        save_knowledge("সিস্টেম", f"Facebook history sync সম্পন্ন। {learned}টি conversation থেকে শেখা হয়েছে।", source="sync")
+        save_knowledge("system", f"Facebook history sync complete. Learned from {learned} conversations.", source="sync")
     except Exception as e:
         print(f"Sync task error: {e}")
 
 # ========== Routes ==========
 @app.route("/webhook", methods=["GET"])
 def verify():
-    """Facebook Page webhook verification"""
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge"), 200
+    mode = request.args.get("hub.mode")
+    token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return challenge, 200
     return "Error", 403
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """Facebook Messenger incoming webhook"""
     data = request.json
     try:
         catalogue_data = get_catalogue_products()
@@ -752,10 +835,10 @@ def webhook():
                         text = msg["text"]
                         if not is_meaningful_message(text):
                             continue
-                        print(f"User {sender_id}: {text}")
+                        print(f"Messenger user {sender_id}: {text}")
                         reply = get_gemini_reply(sender_id, text, catalogue_data)
                         send_message(sender_id, reply)
-                        if "অর্ডার নিশ্চিত" in reply:
+                        if "Order confirmed" in reply or BN_ORDER_CONFIRM in reply:
                             img_url = get_product_image_url(text)
                             if img_url:
                                 send_image(sender_id, img_url)
@@ -765,26 +848,26 @@ def webhook():
                             if attachment.get("type") == "image":
                                 image_url = attachment.get("payload", {}).get("url", "")
                                 if not image_url:
-                                    send_message(sender_id, "ছবি প্রসেস করা যাচ্ছে না, আবার পাঠান।")
+                                    send_message(sender_id, BN_IMG_FAIL_M)
                                     continue
                                 img_bytes, mime = download_messenger_image(image_url)
                                 if not img_bytes:
-                                    send_message(sender_id, "ছবিটা আসেনি, আবার পাঠান।")
+                                    send_message(sender_id, BN_IMG_RETRY_M)
                                     continue
                                 history = get_history(sender_id)
-                                history.append({"role": "user", "content": "[ছবি পাঠিয়েছে]"})
+                                history.append({"role": "user", "content": "[user sent an image]"})
                                 reply = analyze_image_with_gemini(img_bytes, mime or "image/jpeg", catalogue_data, history)
                                 history.append({"role": "assistant", "content": reply})
                                 save_history(sender_id, history)
                                 send_message(sender_id, reply)
                             elif attachment.get("type") == "audio":
-                                send_message(sender_id, "ভয়েস মেসেজ শুনতে পাচ্ছি না, টেক্সটে লিখুন।")
+                                send_message(sender_id, BN_BHOYESH)
                             elif attachment.get("type") == "video":
-                                send_message(sender_id, "ভিডিও দেখা যাচ্ছে না, ছবি বা টেক্সট পাঠান।")
+                                send_message(sender_id, BN_VIDEO)
                             elif attachment.get("type") == "file":
-                                send_message(sender_id, "ফাইল সাপোর্ট করি না, ছবি বা টেক্সট পাঠান।")
+                                send_message(sender_id, BN_FILE)
                             elif attachment.get("type") == "sticker":
-                                send_message(sender_id, "😊")
+                                send_message(sender_id, BN_STICKER)
 
                 # ---- Feed comment events ----
                 for change in entry.get("changes", []):
@@ -794,9 +877,59 @@ def webhook():
                             comment_id = value.get("comment_id")
                             comment_text = value.get("message", "")
                             from_id = value.get("from", {}).get("id", "")
-                            if comment_text and from_id != "107165985626486" and is_meaningful_message(comment_text):
+                            if comment_text and is_meaningful_message(comment_text):
                                 reply = get_gemini_reply(from_id, comment_text, catalogue_data, is_comment=True)
                                 reply_comment(comment_id, reply)
+
+        # ---- WhatsApp Cloud API events ----
+        elif data.get("object") == "whatsapp_business_account":
+            for entry in data.get("entry", []):
+                for change in entry.get("changes", []):
+                    value = change.get("value", {})
+                    contacts = value.get("contacts", [])
+                    from_number = ""
+                    if contacts:
+                        from_number = contacts[0].get("wa_id", "")
+                    for msg in value.get("messages", []):
+                        if not from_number:
+                            from_number = msg.get("from", "")
+                        if not from_number:
+                            continue
+                        mtype = msg.get("type", "")
+                        if mtype == "text":
+                            text = msg.get("text", {}).get("body", "")
+                            if not is_meaningful_message(text):
+                                continue
+                            print(f"WhatsApp user {from_number}: {text}")
+                            reply = get_gemini_reply(from_number, text, catalogue_data)
+                            send_whatsapp_message(from_number, reply)
+                            if "Order confirmed" in reply or BN_ORDER_CONFIRM in reply:
+                                img_url = get_product_image_url(text)
+                                if img_url:
+                                    send_whatsapp_image(from_number, img_url)
+                        elif mtype == "image":
+                            media_id = msg.get("image", {}).get("id", "")
+                            if media_id:
+                                img_bytes, mime = download_whatsapp_media(media_id)
+                                if img_bytes:
+                                    history = get_history(from_number)
+                                    history.append({"role": "user", "content": "[user sent an image]"})
+                                    reply = analyze_image_with_gemini(img_bytes, mime or "image/jpeg", catalogue_data, history)
+                                    history.append({"role": "assistant", "content": reply})
+                                    save_history(from_number, history)
+                                    send_whatsapp_message(from_number, reply)
+                                else:
+                                    send_whatsapp_message(from_number, BN_IMG_RETRY_W)
+                            else:
+                                send_whatsapp_message(from_number, BN_IMG_RETRY_W)
+                        elif mtype == "audio":
+                            send_whatsapp_message(from_number, BN_BHOYESH)
+                        elif mtype == "video":
+                            send_whatsapp_message(from_number, BN_VIDEO)
+                        elif mtype == "document":
+                            send_whatsapp_message(from_number, BN_WH_DOC)
+                        elif mtype == "sticker":
+                            send_whatsapp_message(from_number, BN_STICKER)
     except Exception as e:
         print(f"Webhook error: {e}")
     return "OK", 200
@@ -811,7 +944,7 @@ def sync_facebook():
     threading.Thread(target=sync_facebook_history_task, args=(limit,), daemon=True).start()
     return jsonify({
         "status": "started",
-        "message": f"Background এ {limit}টি conversation sync শুরু হয়েছে। /knowledge দিয়ে দেখুন।"
+        "message": f"Background sync started for {limit} conversations. Check /knowledge."
     }), 200
 
 @app.route("/sync-catalogue", methods=["POST"])
@@ -820,7 +953,7 @@ def sync_catalogue_route():
     if auth != VERIFY_TOKEN:
         return jsonify({"error": "Unauthorized"}), 401
     threading.Thread(target=sync_catalogue_task, daemon=True).start()
-    return jsonify({"status": "started", "message": "Catalogue sync চলছে।"}), 200
+    return jsonify({"status": "started", "message": "Catalogue sync running."}), 200
 
 @app.route("/learn-history", methods=["POST"])
 def learn_history():
@@ -885,45 +1018,21 @@ def update_bot():
 
 @app.route("/")
 def home():
-    return "Dhaka Exclusive Bot (Messenger + Gemini) Running ✅", 200
+    return "Dhaka Exclusive Bot (Messenger + WhatsApp + Gemini) Running", 200
 
 @app.route("/privacy")
 def privacy():
-    return "<h1>Privacy Policy - Dhaka Exclusive</h1><p>আমরা আপনার তথ্য সংগ্রহ করি না।</p>", 200
+    return f"<h1>Privacy Policy - Dhaka Exclusive</h1><p>{BN_PRIVACY}</p>", 200
 
 @app.route("/health")
 def health():
     return jsonify({
         "status": "ok",
-        "platform": "facebook_messenger",
+        "platforms": ["facebook_messenger", "whatsapp"],
         "model": GEMINI_MODEL,
         "gemini_configured": bool(GEMINI_API_KEY),
         "messenger_configured": bool(PAGE_ACCESS_TOKEN),
-        "db_configured": bool(DATABASE_URL),
-        "catalogue_configured": bool(CATALOGUE_ID and PAGE_ACCESS_TOKEN)
-    }), 200
-
-init_db()
-
-# Initial catalogue sync in background
-threading.Thread(target=sync_catalogue_task, daemon=True).start()
-
-thread = threading.Thread(target=keep_alive)
-thread.daemon = True
-thread.start()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-��পনার তথ্য সংগ্রহ করি না।</p>", 200
-
-@app.route("/health")
-def health():
-    return jsonify({
-        "status": "ok",
-        "platform": "facebook_messenger",
-        "model": GEMINI_MODEL,
-        "gemini_configured": bool(GEMINI_API_KEY),
-        "messenger_configured": bool(PAGE_ACCESS_TOKEN),
+        "whatsapp_configured": bool(WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID),
         "db_configured": bool(DATABASE_URL),
         "catalogue_configured": bool(CATALOGUE_ID and PAGE_ACCESS_TOKEN)
     }), 200
