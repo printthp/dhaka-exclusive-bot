@@ -3,7 +3,7 @@ import requests
 import threading
 import time
 import base64
-import psycopg2
+import pg8000.native
 import json
 from flask import Flask, request, jsonify
 
@@ -18,19 +18,19 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 IGNORE_PATTERNS = ["🔥","👏","❤️","😍","👍","🙏","😊","💯","✅","🎉","😂","🥰","💕","🌹","👌","💪"]
 
+def get_conn():
+    return pg8000.native.Connection(database_url=DATABASE_URL)
+
 def init_db():
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute("""
+        conn = get_conn()
+        conn.run("""
             CREATE TABLE IF NOT EXISTS conversations (
                 sender_id TEXT PRIMARY KEY,
                 history JSONB DEFAULT '[]',
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        conn.commit()
-        cur.close()
         conn.close()
         print("Database initialized")
     except Exception as e:
@@ -38,14 +38,12 @@ def init_db():
 
 def get_history(sender_id):
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute("SELECT history FROM conversations WHERE sender_id = %s", (sender_id,))
-        row = cur.fetchone()
-        cur.close()
+        conn = get_conn()
+        rows = conn.run("SELECT history FROM conversations WHERE sender_id = :id", id=sender_id)
         conn.close()
-        if row:
-            return row[0] if isinstance(row[0], list) else json.loads(row[0])
+        if rows:
+            val = rows[0][0]
+            return val if isinstance(val, list) else json.loads(val)
         return []
     except Exception as e:
         print(f"Get history error: {e}")
@@ -55,16 +53,13 @@ def save_history(sender_id, history):
     try:
         if len(history) > 50:
             history = history[-50:]
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute("""
+        conn = get_conn()
+        conn.run("""
             INSERT INTO conversations (sender_id, history, updated_at)
-            VALUES (%s, %s, NOW())
+            VALUES (:id, :h, NOW())
             ON CONFLICT (sender_id) DO UPDATE
-            SET history = %s, updated_at = NOW()
-        """, (sender_id, json.dumps(history), json.dumps(history)))
-        conn.commit()
-        cur.close()
+            SET history = :h, updated_at = NOW()
+        """, id=sender_id, h=json.dumps(history))
         conn.close()
     except Exception as e:
         print(f"Save history error: {e}")
