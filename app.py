@@ -1044,8 +1044,10 @@ def debug_gemini():
     if not GEMINI_API_KEY:
         return jsonify({"gemini_key_set": False, "error": "GEMINI_API_KEY missing"}), 200
     for api_version in ["v1beta", "v1"]:
-        for model in ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-latest",
-                      "gemini-2.0-flash", "gemini-2.5-flash", "gemini-pro", "gemini-1.5-flash-8b"]:
+        for model in ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite",
+                      "gemini-2.5-flash-preview", "gemini-2.0-flash-exp",
+                      "gemini-flash-lite-latest", "gemini-flash-latest",
+                      "gemini-1.5-flash", "gemini-1.5-pro"]:
             try:
                 payload = {
                     "contents": [{"role": "user", "parts": [{"text": test_prompt}]}],
