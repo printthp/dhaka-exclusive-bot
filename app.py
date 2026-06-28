@@ -1223,6 +1223,39 @@ def health():
         "cache_age_seconds": cache_age,
     }), 200
 
+@app.route("/test-image", methods=["POST"])
+def test_image_endpoint():
+    """Real image test - download a publicly accessible image URL and run analyze_image_smart.
+    Body: {"image_url": "https://...", "history_text": ["prior msg 1", "prior msg 2"]}
+    """
+    auth = request.headers.get("X-Auth-Token", "")
+    if auth != VERIFY_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json or {}
+    image_url = data.get("image_url", "")
+    history_text = data.get("history_text", [])
+    if not image_url:
+        return jsonify({"error": "image_url required"}), 400
+    try:
+        dl = requests.get(image_url, timeout=30)
+        if dl.status_code != 200:
+            return jsonify({"error": f"image fetch failed: {dl.status_code}"}), 400
+        mime = dl.headers.get("content-type", "image/jpeg")
+        if mime not in ("image/jpeg", "image/png", "image/webp"):
+            return jsonify({"error": f"unsupported mime: {mime}"}), 400
+        history = [{"role": "user", "content": t} for t in history_text]
+        products, _, product_index = get_products_cached()
+        reply = analyze_image_smart(dl.content, mime, products, product_index, history)
+        return jsonify({
+            "image_url": image_url,
+            "image_bytes": len(dl.content),
+            "mime": mime,
+            "history_size": len(history),
+            "bot_reply": reply
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)[:300]}), 500
+
 @app.route("/test-flow", methods=["POST"])
 def test_flow():
     auth = request.headers.get("X-Auth-Token", "")
