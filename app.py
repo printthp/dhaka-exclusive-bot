@@ -693,7 +693,6 @@ def analyze_image_smart(image_bytes, mime_type, products, product_index, history
         matches = find_similar_products(identified, product_index, top_n=3) if identified else []
 
         catalogue_text = "\n".join([f"{p['name']} | {p['price']}" for p in products[:50]])
-        context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-3:]])
 
         if matches:
             matched_text = "\n".join([f"- {p['name']}: {p['price']}" for p in matches])
@@ -717,7 +716,7 @@ def analyze_image_smart(image_bytes, mime_type, products, product_index, history
             )
 
         reply = call_gemini_text(
-            prompt=f"Image analysis context: {context}" if context else "Respond to the image.",
+            prompt="Tell the customer about the matching product with price and ask if they want to order.",
             system=system,
             max_tokens=300,
             temperature=0.6
